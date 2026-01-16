@@ -6,16 +6,12 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.filters.command import Command
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
-from aiohttp import web
 
 load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_IDS = [int(id.strip()) for id in os.getenv("ADMIN_IDS", "0").split(",") if id.strip()]
 DB_PATH = os.getenv("DB_PATH", "bookings.db")
-USE_WEBHOOK = os.getenv("USE_WEBHOOK", "false").lower() == "true"
-WEBHOOK_URL = os.getenv("WEBHOOK_URL", "")
-WEBHOOK_PORT = int(os.getenv("PORT", 8000))
 
 if not BOT_TOKEN:
     raise ValueError("BOT_TOKEN not found in environment variables")
@@ -1091,6 +1087,12 @@ async def skip_comment(message: types.Message):
 async def main():
     await init_db()
     
+    # Delete any existing webhook to use polling instead
+    try:
+        await bot.delete_webhook(drop_pending_updates=True)
+    except Exception as e:
+        print(f"Webhook cleanup: {e}")
+    
     # print bot identity to verify which bot is running
     try:
         me = await bot.get_me()
@@ -1098,55 +1100,8 @@ async def main():
     except Exception as e:
         print(f"Could not fetch bot identity: {e}")
 
-    if USE_WEBHOOK and WEBHOOK_URL:
-        print(f"🌐 Starting with Webhook mode on port {WEBHOOK_PORT}")
-        print(f"📍 Webhook URL: {WEBHOOK_URL}")
-        
-        # Set webhook
-        try:
-            await bot.set_webhook(url=WEBHOOK_URL)
-            print("✅ Webhook set successfully")
-        except Exception as e:
-            print(f"❌ Failed to set webhook: {e}")
-        
-        # Setup aiohttp server
-        app = web.Application()
-        
-        async def handle_webhook(request):
-            try:
-                update_data = await request.json()
-                update = types.Update(**update_data)
-                await dp.feed_update(bot, update)
-                return web.Response(text="OK")
-            except Exception as e:
-                print(f"Webhook error: {e}")
-                return web.Response(text="ERROR", status=400)
-        
-        app.router.post("/webhook", handle_webhook)
-        
-        runner = web.AppRunner(app)
-        await runner.setup()
-        site = web.TCPSite(runner, "0.0.0.0", WEBHOOK_PORT)
-        await site.start()
-        
-        print(f"✅ Bot started (Webhook mode)")
-        
-        # Keep running
-        try:
-            await asyncio.Event().wait()
-        except KeyboardInterrupt:
-            await runner.cleanup()
-    else:
-        print("⏱️ Starting with Polling mode")
-        
-        # Delete any existing webhook to use polling instead
-        try:
-            await bot.delete_webhook(drop_pending_updates=True)
-        except Exception as e:
-            print(f"Webhook cleanup: {e}")
-        
-        print("✅ Bot started (Polling mode)")
-        await dp.start_polling(bot)
+    print("✅ Bot started")
+    await dp.start_polling(bot)
 
 if __name__ == "__main__":
     try:
