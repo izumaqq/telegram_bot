@@ -1,6 +1,3 @@
 aiogram
 aiosqlite
-python-dotenv
-aiohttp
-
 python-dotenvaiohttp
