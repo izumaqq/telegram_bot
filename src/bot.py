@@ -527,7 +527,11 @@ async def contact_info(call: types.CallbackQuery):
 @dp.callback_query(lambda c: c.data == "mywork")
 async def my_work(call: types.CallbackQuery):
     try:
-        await call.message.answer("🛠 Мои работы и отзывы: https://t.me/vii_nails_art")
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="📱 Instagram", url="https://www.instagram.com/vii.nail_?igsh=MThlZDM4OWt0M2FzdQ%3D%3D&utm_source=qr")],
+            [InlineKeyboardButton(text="💬 Telegram", url="https://t.me/vii_nails_art")]
+        ])
+        await call.message.answer("🛠 Мои работы и отзывы:", reply_markup=keyboard)
         await call.answer()
     except Exception as e:
         print(f"Error in my_work: {e}")
